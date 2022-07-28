@@ -43,17 +43,6 @@ func main() {
 			}
 
 		}
-
-		/*
-			if scanner.Text() == "BEGIN" {
-				fmt.Println("Market Open:")
-			}
-			fmt.Println(scanner.Text())
-			x := json.Unmarshal([]byte(scanner.Text()), &t)
-			// new func for routune?
-			fmt.Println(t.id, t.market, x)
-			break
-		*/
 	}
 
 }
