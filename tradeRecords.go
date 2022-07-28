@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
+
+	"github.com/montanaflynn/stats"
 )
 
 type trade struct {
 	Id     json.Number `json:"id"`
-	Market json.Number `json:"market"`
-	Price  json.Number `json:"price" type:"float" required:"true"`
+	Market json.Number `json:"market" type:"integer" required:"true"`
+	Price  json.Number `json:"price" type:"float64" required:"true"`
 	Volume json.Number `json:"volume"`
 	Is_buy bool        `json:"is_buy"`
 }
@@ -26,7 +26,7 @@ type record struct {
 	Percentage_buy float64
 }
 
-type recTest map[json.Number][]json.Number
+type recTest map[json.Number][]float64
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
@@ -41,25 +41,30 @@ func main() {
 		case "BEGIN":
 			fmt.Println("Market Open:")
 		case "END":
+			fmt.Println("Market Close")
 			break
 		default:
 
-			x := json.NewDecoder(strings.NewReader(scanner.Text())).Decode(&t)
+			x := json.Unmarshal(scanner.Bytes(), &t)
+			//.Decode(&t)
 			//r := &rec
 			// new func for routune?
 			if x != nil {
-				fmt.Println(x)
-				break
+				fmt.Printf("%+v %v", t, x)
 			}
-			if j, err := strconv.ParseFloat(t.Price, 64); err == nil {
-				fmt.Println(j)
-			}
-			s[t.Market] = append(s[t.Market], t.Price)
 
+			i, _ := t.Price.Float64()
+			j, _ := t.Volume.Float64()
+
+			s[t.Market] = append(s[t.Market], i)
+			s[t.Market] = append(s[t.Volume], j)
 		}
 	}
-	for key, element := range s {
 
-		fmt.Println("Market: ", key, "Average Price", element)
+	for key, element := range s {
+		trades := len(element)
+		mean, _ := stats.Mean(element)
+		fmt.Println("Market:", key, " Mean Price:", mean, "Trades: ", trades)
+
 	}
 }
