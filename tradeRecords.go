@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 
 	"github.com/montanaflynn/stats"
@@ -30,25 +31,34 @@ type persist struct {
 	Market         json.Number
 	Volume         []float64
 	Prices         []float64
-	Percentage_buy float64
+	Percentage_buy []float64
 	VWAP           float64
 }
 
 type recTest map[json.Number]persist
 
+func roundFloat(val float64, precision uint) float64 {
+	ratio := math.Pow(10, float64(precision))
+	return math.Round(val*ratio) / ratio
+}
+
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
+	buffer := make([]byte, 100)
+	scanner.Buffer(buffer, 100)
 
-	s := recTest{}
-	//test := make([]record, 5)
+	s := make(recTest)
+
 	for scanner.Scan() {
+
 		var t trade
-		m := persist{}
+		//var b *persist
+		b := persist{}
 
 		switch scanner.Text() {
 
 		case "BEGIN":
-			fmt.Println("Market Open:")
+			fmt.Println("Consuming Data:")
 		case "END":
 			fmt.Println("Market Close")
 			break
@@ -62,22 +72,28 @@ func main() {
 				fmt.Println(x)
 				continue
 			}
+			b = s[t.Market]
 
-			i, _ := t.Price.Float64()
-			j, _ := t.Volume.Float64()
+			p, _ := t.Price.Float64()
+			v, _ := t.Volume.Float64()
 
-			m.Prices = append(m.Prices, i)
-			m.Volume = append(m.Volume, j)
-			sumvol, _ := stats.Sum(m.Volume)
-			m.VWAP = (i * j) / sumvol
+			b.Prices = append(b.Prices, p)
+			b.Volume = append(b.Volume, v)
+
+			max, _ := stats.Max(b.Prices)
+			min, _ := stats.Min(b.Prices)
+			b.VWAP += ((max + min + p) / 3) * v
 
 			if t.Is_buy == true {
-				m.Percentage_buy += 1.0
+				b.Percentage_buy = append(b.Percentage_buy, float64(1))
+			} else {
+				b.Percentage_buy = append(b.Percentage_buy, float64(0))
 			}
-			s[t.Market] = m
+			//fmt.Println(m)
+			s[t.Market] = b
+
 		}
 	}
-	//fmt.Println(s)
 
 	for key, element := range s {
 		fin := record{}
@@ -85,13 +101,14 @@ func main() {
 		meanP, _ := stats.Mean(element.Prices)
 		meanV, _ := stats.Mean(element.Volume)
 		totV, _ := stats.Sum(element.Volume)
+		pBuy, _ := stats.Sum(element.Percentage_buy)
 
 		fin.Market = key
-		fin.TotalVolume = totV
-		fin.MeanPrice = meanP
-		fin.MeanVolume = meanV
-		fin.VWAP = element.VWAP
-		fin.Percentage_buy = (element.Percentage_buy / float64(trades))
+		fin.TotalVolume = roundFloat(totV, 2)
+		fin.MeanPrice = roundFloat(meanP, 2)
+		fin.MeanVolume = roundFloat(meanV, 2)
+		fin.VWAP = roundFloat(element.VWAP/totV, 2)
+		fin.Percentage_buy = roundFloat((pBuy / float64(trades)), 2)
 
 		aggData, _ := json.Marshal(fin)
 		fmt.Println(string(aggData))
