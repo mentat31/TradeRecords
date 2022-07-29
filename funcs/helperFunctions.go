@@ -66,8 +66,8 @@ func Agg(current Trade, record Persist, marketData RecMap) Persist {
 
 		Side Note 2:
 
-		During my initial tests, I noticed time to complete had slightly increased by about
-		10ms when importing the functions and structs into the main file. I know the binary
+		During my initial tests, I noticed time to complete had slightly increased
+		when importing the functions and structs into the main file. I know the binary
 		is not deterministic, however I wanted to keep the types and functions organized in
 		a single module.
 	*/

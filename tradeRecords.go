@@ -30,8 +30,8 @@ func main() {
 
 	/*
 		The bufio scanner provided the easiest way to read both the text and Json outputs from the binary.
-		However, during my inital I found the scanner was unable to buffer the required space to read all the input,
-		and so is manually buffered at 100 as input size ranges from 94-97 bytes.
+		However, during my initial run I found the scanner was unable to buffer the required space to read
+		all the input, and so is manually buffered at 100 as input size ranges from 94-97 bytes.
 	*/
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -40,7 +40,7 @@ func main() {
 
 	// Initialize RecMap
 	r := funcs.RecMap{}
-
+	start1 := time.Now()
 	for scanner.Scan() {
 		// Trade type
 		var t funcs.Trade
@@ -69,7 +69,7 @@ func main() {
 			r[t.Market] = i
 		}
 	}
-	start := time.Now()
+	end1 := time.Now()
 	for key, element := range r {
 
 		// Iterate through map of market data on read finish, populating the Record struct for final Json marshal.
@@ -94,6 +94,6 @@ func main() {
 
 	}
 	end := time.Now()
-	fmt.Println("Took", (end.Sub(start)), "to aggregate the data.")
+	fmt.Println("Took", (end1.Sub(start1)), "to aggregate", "and", end.Sub(end1), "to compute the data.")
 
 }
