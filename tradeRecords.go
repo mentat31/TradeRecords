@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"time"
 
 	"github.com/montanaflynn/stats"
 )
@@ -35,11 +36,34 @@ type persist struct {
 	VWAP           float64
 }
 
-type recTest map[json.Number]persist
+type recMap map[json.Number]persist
 
 func roundFloat(val float64, precision uint) float64 {
 	ratio := math.Pow(10, float64(precision))
 	return math.Round(val*ratio) / ratio
+}
+
+func agg(current trade, record persist, marketData recMap) persist {
+
+	r := marketData[current.Market]
+
+	p, _ := current.Price.Float64()
+	v, _ := current.Volume.Float64()
+
+	r.Prices = append(r.Prices, p)
+	r.Volume = append(r.Volume, v)
+
+	max, _ := stats.Max(r.Prices)
+	min, _ := stats.Min(r.Prices)
+	r.VWAP += ((max + min + p) / 3) * v
+
+	if current.Is_buy == true {
+		r.Percentage_buy = append(r.Percentage_buy, float64(1))
+	} else {
+		r.Percentage_buy = append(r.Percentage_buy, float64(0))
+	}
+	marketData[current.Market] = r
+	return marketData[current.Market]
 }
 
 func main() {
@@ -47,12 +71,12 @@ func main() {
 	buffer := make([]byte, 100)
 	scanner.Buffer(buffer, 100)
 
-	s := make(recTest)
+	s := recMap{}
 
 	for scanner.Scan() {
 
 		var t trade
-		//var b *persist
+
 		b := persist{}
 
 		switch scanner.Text() {
@@ -60,42 +84,23 @@ func main() {
 		case "BEGIN":
 			fmt.Println("Consuming Data:")
 		case "END":
-			fmt.Println("Market Close")
+			fmt.Println("Data Consumed")
 			break
 		default:
-
 			x := json.Unmarshal(scanner.Bytes(), &t)
-			//.Decode(&t)
-			//r := &rec
-			// new func for routune?
+
 			if x != nil {
 				fmt.Println(x)
 				continue
 			}
-			b = s[t.Market]
+			i := agg(t, b, s)
 
-			p, _ := t.Price.Float64()
-			v, _ := t.Volume.Float64()
-
-			b.Prices = append(b.Prices, p)
-			b.Volume = append(b.Volume, v)
-
-			max, _ := stats.Max(b.Prices)
-			min, _ := stats.Min(b.Prices)
-			b.VWAP += ((max + min + p) / 3) * v
-
-			if t.Is_buy == true {
-				b.Percentage_buy = append(b.Percentage_buy, float64(1))
-			} else {
-				b.Percentage_buy = append(b.Percentage_buy, float64(0))
-			}
-			//fmt.Println(m)
-			s[t.Market] = b
-
+			s[t.Market] = i
 		}
 	}
-
+	start := time.Now()
 	for key, element := range s {
+
 		fin := record{}
 		trades := len(element.Prices)
 		meanP, _ := stats.Mean(element.Prices)
@@ -111,8 +116,11 @@ func main() {
 		fin.Percentage_buy = roundFloat((pBuy / float64(trades)), 2)
 
 		aggData, _ := json.Marshal(fin)
+
 		fmt.Println(string(aggData))
 
 	}
+	end := time.Now()
+	fmt.Println("Took", (end.Sub(start)), "to aggregate the data.")
 
 }
