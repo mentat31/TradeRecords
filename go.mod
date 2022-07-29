@@ -1,4 +1,4 @@
-module tradeRecords
+module messariTradeRecords
 
 go 1.18
 

@@ -1,84 +1,53 @@
 package main
 
+/*
+	Hello Messari team members, thank you for considering me for this position, and taking the
+	time to review my work.
+
+	A quick disclaimer: Before this project, my only experience with Go was the hello
+	world I ran about five minuetes before creating this file, regardless, the language has really
+	grown on me.
+
+	That being said, this was definitely one of the better take home projects that I've recieved.
+
+	I look forward to hearing back from you!
+
+*/
+
 import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"math"
+	"log"
+	"messariTradeRecords/funcs" // additional functions and types located in funcs/helperFunctions.go
 	"os"
 	"time"
 
-	"github.com/montanaflynn/stats"
+	"github.com/montanaflynn/stats" // stats library for calculations
 )
 
-type trade struct {
-	Id     json.Number `json:"id"`
-	Market json.Number `json:"market" type:"integer" required:"true"`
-	Price  json.Number `json:"price" type:"float64" required:"true"`
-	Volume json.Number `json:"volume"`
-	Is_buy bool        `json:"is_buy"`
-}
-
-type record struct {
-	Market         json.Number `json:"market"`
-	TotalVolume    float64     `json:"Total Volume"`
-	MeanPrice      float64     `json:"Mean Price"`
-	MeanVolume     float64     `json:"Mean Volume"`
-	VWAP           float64     `json:"VWAP"`
-	Percentage_buy float64     `json:"Percentage Buy"`
-}
-
-type persist struct {
-	Market         json.Number
-	Volume         []float64
-	Prices         []float64
-	Percentage_buy []float64
-	VWAP           float64
-}
-
-type recMap map[json.Number]persist
-
-func roundFloat(val float64, precision uint) float64 {
-	ratio := math.Pow(10, float64(precision))
-	return math.Round(val*ratio) / ratio
-}
-
-func agg(current trade, record persist, marketData recMap) persist {
-
-	r := marketData[current.Market]
-
-	p, _ := current.Price.Float64()
-	v, _ := current.Volume.Float64()
-
-	r.Prices = append(r.Prices, p)
-	r.Volume = append(r.Volume, v)
-
-	max, _ := stats.Max(r.Prices)
-	min, _ := stats.Min(r.Prices)
-	r.VWAP += ((max + min + p) / 3) * v
-
-	if current.Is_buy == true {
-		r.Percentage_buy = append(r.Percentage_buy, float64(1))
-	} else {
-		r.Percentage_buy = append(r.Percentage_buy, float64(0))
-	}
-	marketData[current.Market] = r
-	return marketData[current.Market]
-}
-
 func main() {
+
+	/*
+		The bufio scanner provided the easiest way to read both the text and Json outputs from the binary.
+		However, during my inital I found the scanner was unable to buffer the required space to read all the input,
+		and so is manually buffered at 100 as input size ranges from 94-97 bytes.
+	*/
+
 	scanner := bufio.NewScanner(os.Stdin)
 	buffer := make([]byte, 100)
 	scanner.Buffer(buffer, 100)
 
-	s := recMap{}
+	// Initialize RecMap
+	r := funcs.RecMap{}
 
 	for scanner.Scan() {
+		// Trade type
+		var t funcs.Trade
+		// Initialize Pesist
+		p := funcs.Persist{}
 
-		var t trade
-
-		b := persist{}
-
+		// switch statement on scanner Text to read BEGIN/END.
 		switch scanner.Text() {
 
 		case "BEGIN":
@@ -87,33 +56,37 @@ func main() {
 			fmt.Println("Data Consumed")
 			break
 		default:
+			// Unmarshal bytes and log Fatal error.
 			x := json.Unmarshal(scanner.Bytes(), &t)
 
 			if x != nil {
-				fmt.Println(x)
+				log.Fatal(x)
 				continue
 			}
-			i := agg(t, b, s)
+			// Aggregate trade data.
+			i := funcs.Agg(t, p, r)
 
-			s[t.Market] = i
+			r[t.Market] = i
 		}
 	}
 	start := time.Now()
-	for key, element := range s {
+	for key, element := range r {
 
-		fin := record{}
+		// Iterate through map of market data on read finish, populating the Record struct for final Json marshal.
+
+		fin := funcs.Record{}
 		trades := len(element.Prices)
 		meanP, _ := stats.Mean(element.Prices)
 		meanV, _ := stats.Mean(element.Volume)
 		totV, _ := stats.Sum(element.Volume)
 		pBuy, _ := stats.Sum(element.Percentage_buy)
 
-		fin.Market = key
-		fin.TotalVolume = roundFloat(totV, 2)
-		fin.MeanPrice = roundFloat(meanP, 2)
-		fin.MeanVolume = roundFloat(meanV, 2)
-		fin.VWAP = roundFloat(element.VWAP/totV, 2)
-		fin.Percentage_buy = roundFloat((pBuy / float64(trades)), 2)
+		fin.Market = key // Market
+		fin.TotalVolume = funcs.RoundFloat(totV, 2)
+		fin.MeanPrice = funcs.RoundFloat(meanP, 2)
+		fin.MeanVolume = funcs.RoundFloat(meanV, 2)
+		fin.VWAP = funcs.RoundFloat(element.VWAP/totV, 2)
+		fin.Percentage_buy = funcs.RoundFloat((pBuy / float64(trades)), 2)
 
 		aggData, _ := json.Marshal(fin)
 
