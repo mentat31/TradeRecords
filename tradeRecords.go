@@ -1,18 +1,6 @@
 package main
 
-/*
-	Hello Messari team members, thank you for considering me for this position, and taking the
-	time to review my work.
 
-	A quick disclaimer: Before this project, my only experience with Go was the hello
-	world I ran about five minuetes before creating this file, regardless, the language has really
-	grown on me.
-
-	That being said, this was definitely one of the better take home projects that I've recieved.
-
-	I look forward to hearing back from you!
-
-*/
 
 import (
 	"bufio"
